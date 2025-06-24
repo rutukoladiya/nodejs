@@ -6,21 +6,28 @@ dotenv.config();
 export const protect = async (req, res, next) => {
   const token = req.headers.authorization?.split(" ")[1];
 
-  if (!token) return res.status(401).json({ message: "No token" });
+  if (!token) {
+    const err = new Error("No token provided");
+    err.status = 401;
+    return next(err);
+  }
 
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.user = decoded;
     next();
   } catch (err) {
-    res.status(500).json({ status: false, message: err.message });
+    err.status = 401;
+    next(err);
   }
 };
 
 export const authorizeRoles = (...roles) => {
   return async (req, res, next) => {
     if (!roles.includes(req.user.role)) {
-      return res.status(403).json({ message: "Access Denied" });
+      const err = new Error("Access Denied");
+      err.status = 403;
+      return next(err);
     }
     next();
   };

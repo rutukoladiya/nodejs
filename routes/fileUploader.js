@@ -37,7 +37,9 @@ const upload = multer({ storage: storage });
 // upload multiple files
 router.post("/multi", upload.array("myFiles", 5), (req, res) => {
   if (!req.files) {
-    return res.status(400).send("No file uploaded.");
+    const error = new Error("No file uploaded!");
+    error.status = 403;
+    return next(error);
   }
   res.json({
     message: "Files uploaded successfully!",
@@ -48,7 +50,9 @@ router.post("/multi", upload.array("myFiles", 5), (req, res) => {
 // Upload route (single file)
 router.post("/upload", upload.single("myFile"), (req, res) => {
   if (!req.file) {
-    return res.status(400).send("No file uploaded.");
+    const error = new Error("No file uploaded!");
+    error.status = 403;
+    return next(error);
   }
   res.json({
     message: "File uploaded successfully!",

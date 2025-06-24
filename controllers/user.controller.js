@@ -1,7 +1,10 @@
 import userModel from "../models/User.js";
 import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import dotenv from "dotenv";
+import {
+  generateAccessToken,
+  generateRefreshToken,
+} from "../utils/token.util.js";
 
 dotenv.config();
 
@@ -20,31 +23,40 @@ export const register = async (req, res) => {
 
     const user = new userModel({ email, password: hashPassword, role });
 
-    const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
+    const accessToken = generateAccessToken({
+      id: user._id,
+      email: user.email,
+      role: user.role,
+    });
+    const refreshToken = generateRefreshToken({ id: user._id });
     await user.save();
 
-    res.status(201).json({
-      status: true,
-      message: "User created successfully!",
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        role: user.role,
-      },
-    });
+    res
+      .cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "Strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      })
+      .status(201)
+      .json({
+        status: true,
+        message: "User created successfully!",
+        token: accessToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          role: user.role,
+        },
+      });
   } catch (err) {
-    res.status(500).json({ status: false, message: err.message });
+    return res.status(500).json({ status: false, message: err.message });
   }
 };
 
 export const login = async (req, res) => {
   try {
-    const { email, password, role } = req.body;
+    const { email, password } = req.body;
 
     if (!email || !password) {
       return res
@@ -68,23 +80,32 @@ export const login = async (req, res) => {
         .json({ status: false, message: "Invalid password" });
     }
 
-    const token = jwt.sign(
-      { id: user._id, email: user.email, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: "1h" }
-    );
-
-    res.status(200).json({
-      status: true,
-      message: "Login successful",
-      token,
-      user: {
-        id: user._id,
-        email: user.email,
-        role: user.role,
-      },
+    const accessToken = generateAccessToken({
+      id: user._id,
+      email: user.email,
+      role: user.role,
     });
+    const refreshToken = generateRefreshToken({ id: user._id });
+
+    res
+      .cookie("refreshToken", refreshToken, {
+        httpOnly: true,
+        secure: true,
+        sameSite: "Strict",
+        maxAge: 7 * 24 * 60 * 60 * 1000,
+      })
+      .status(200)
+      .json({
+        status: true,
+        message: "Login successful",
+        token: accessToken,
+        user: {
+          id: user._id,
+          email: user.email,
+          role: user.role,
+        },
+      });
   } catch (err) {
-    res.status(500).json({ status: false, message: err.message });
+    return res.status(500).json({ status: false, message: err.message });
   }
 };
