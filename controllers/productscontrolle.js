@@ -1,8 +1,25 @@
 import productModel from "../models/Product.js";
+import { paginateQuery } from "../utils/pagination.utils.js";
 
 export const getAllProducts = async (req, res) => {
   try {
-    const products = await productModel.find();
+    // const products = await productModel.find();
+    const page = req.query.page || 1;
+    const limit = req.query.limit || 10;
+    const search = req.query.search || "";
+
+    const searchQuery = {
+      $or: [
+        { name: { $regex: search, $options: "i" } },
+        { category: { $regex: search, $options: "i" } },
+      ],
+    };
+
+    const products = await paginateQuery(
+      productModel,
+      search ? searchQuery : {},
+      { page, limit }
+    );
     res.status(200).json({ status: "true", data: products });
   } catch (err) {
     res.status(500).json({ status: "false", message: err.message });
